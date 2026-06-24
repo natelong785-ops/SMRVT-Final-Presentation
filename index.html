@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SMRVT — Complete Capstone Presentation (10-15 min)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0D1B2A;--mid:#1B2B40;--card:#223352;
+  --blue:#3B82F6;--ice:#CADCFC;--white:#FFFFFF;
+  --muted:#64748B;--green:#4ADE80;--amber:#FCD34D;--red:#F87171;
+  --serif:'Instrument Serif',Georgia,serif;--sans:'Space Grotesk',system-ui,sans-serif;
+}
+html,body{width:100%;height:100%;background:var(--navy);font-family:var(--sans);overflow:hidden;color:var(--white)}
+#stage{width:100vw;height:100vh;position:relative;overflow:hidden}
+.scene{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.5s ease}
+.scene.active{opacity:1;pointer-events:all}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 2px rgba(59,130,246,0.3)}50%{box-shadow:0 0 0 10px rgba(59,130,246,0.06)}}
+@keyframes wave{0%,100%{height:3px}50%{height:18px}}
+.ai{opacity:0;animation:fadeUp 0.55s ease forwards}
+
+/* WIPE */
+#wipe{position:fixed;inset:0;background:var(--navy);pointer-events:none;z-index:900;opacity:0;transition:opacity 0.3s ease}
+#wipe.show{opacity:1}
+/* PROGRESS */
+#progress{position:fixed;top:0;left:0;height:3px;background:var(--blue);z-index:800;transition:width 0.4s ease;width:0%}
+/* NAV */
+#nav{position:fixed;top:14px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:800;flex-wrap:wrap;max-width:90vw;justify-content:center}
+.ndot{width:7px;height:7px;border-radius:50%;background:var(--muted);cursor:pointer;transition:background .3s,transform .3s;flex-shrink:0}
+.ndot.active{background:var(--blue);transform:scale(1.5)}
+.ndot.demo{background:var(--amber)}
+.ndot.demo.active{background:var(--amber);box-shadow:0 0 0 3px rgba(252,211,77,0.3)}
+#counter{position:fixed;top:10px;left:16px;font-size:10px;color:var(--muted);letter-spacing:.1em;z-index:800}
+#total-time{position:fixed;top:10px;right:16px;font-size:10px;color:var(--muted);letter-spacing:.1em;z-index:800}
+
+/* NARRATOR BAR */
+#nbar{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(13,27,42,0.98),rgba(13,27,42,0.88));border-top:1px solid rgba(59,130,246,0.18);padding:11px 200px 11px 16px;z-index:800;min-height:60px;display:flex;align-items:center;gap:11px}
+#nbar-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;background:linear-gradient(135deg,#1e3a5f,#1d4ed8);border:2px solid rgba(59,130,246,0.4);transition:all .4s}
+#nbar-av.speaking{animation:pulse 1s ease-in-out infinite}
+#nbar-name{font-size:9px;letter-spacing:.15em;color:var(--blue);text-transform:uppercase;margin-bottom:2px;transition:color .4s}
+#nbar-text{font-size:12px;color:var(--ice);line-height:1.45;min-height:16px}
+#nbar-cur{display:none;width:2px;height:11px;background:var(--blue);margin-left:2px;vertical-align:middle;animation:blink .65s ease-in-out infinite}
+#nbar-wave{display:flex;align-items:center;gap:3px;height:20px;flex-shrink:0}
+.wb{width:3px;border-radius:2px;height:3px;background:var(--muted)}
+.wb.on{animation:wave .75s ease-in-out infinite;background:var(--blue)}
+.wb:nth-child(2){animation-delay:.1s}.wb:nth-child(3){animation-delay:.2s}.wb:nth-child(4){animation-delay:.3s}.wb:nth-child(5){animation-delay:.15s}
+
+/* CONTROLS */
+#ctrl{position:fixed;bottom:13px;right:13px;display:flex;gap:6px;z-index:900}
+.cbtn{background:var(--card);border:1px solid rgba(59,130,246,0.3);color:var(--ice);font-family:var(--sans);font-size:11px;padding:5px 10px;border-radius:6px;cursor:pointer;transition:background .2s}
+.cbtn:hover{background:var(--mid)}
+.cbtn.go{background:var(--blue);color:#fff;border-color:var(--blue)}
+.cbtn.on{background:#15803d;color:#fff;border-color:#15803d}
+
+/* SCENE SHARED */
+.sey{font-size:10px;letter-spacing:.22em;color:var(--blue);text-transform:uppercase;margin-bottom:11px;animation-delay:.18s}
+.sttl{font-family:var(--serif);font-size:clamp(24px,3.2vw,44px);margin-bottom:24px;animation-delay:.32s}
+
+/* BG UTILS */
+.bg-rad{position:absolute;inset:0;background:radial-gradient(ellipse 70% 55% at 50% 45%,rgba(59,130,246,0.08),transparent 70%)}
+.bg-gr{position:absolute;inset:0;background-image:linear-gradient(rgba(59,130,246,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,0.04) 1px,transparent 1px);background-size:55px 55px}
+
+/* ══ S0: TEAM INTRO ══ */
+#s0{padding:32px 60px 70px}
+.mcards{position:relative;display:flex;gap:12px;width:100%;max-width:1060px}
+.mc{flex:1;background:var(--mid);border:1px solid rgba(59,130,246,0.12);border-radius:12px;padding:16px 12px;text-align:center;opacity:0;transform:translateY(14px)}
+.mc:nth-child(1){animation:fadeUp .4s .48s ease forwards}.mc:nth-child(2){animation:fadeUp .4s .62s ease forwards}
+.mc:nth-child(3){animation:fadeUp .4s .76s ease forwards}.mc:nth-child(4){animation:fadeUp .4s .90s ease forwards}
+.mc:nth-child(5){animation:fadeUp .4s 1.04s ease forwards}
+.mc.spk{border-color:var(--blue);box-shadow:0 0 0 2px rgba(59,130,246,0.2)}
+.mc-av{width:44px;height:44px;border-radius:50%;margin:0 auto 9px;display:flex;align-items:center;justify-content:center;font-size:19px}
+.mc-name{font-size:11.5px;font-weight:600;color:var(--white);margin-bottom:2px}
+.mc-role{font-size:9px;color:var(--blue);margin-bottom:6px}
+.mc-q{font-size:9.5px;color:var(--muted);line-height:1.5;font-style:italic;min-height:50px}
+.mc-wv{display:flex;align-items:center;justify-content:center;gap:2px;height:13px;margin-top:7px}
+.mc-wb{width:2px;border-radius:2px;height:2px;background:var(--blue)}
+.mc-wb.on{animation:wave .7s ease-in-out infinite}
+.mc-wb:nth-child(2){animation-delay:.1s}.mc-wb:nth-child(3){animation-delay:.2s}.mc-wb:nth-child(4){animation-delay:.1s}.mc-wb:nth-child(5){animation-delay:.05s}
+
+/* ══ S1: TITLE ══ */
+#s1{background:var(--navy)}
+.s1-ac{position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(to bottom,transparent,var(--blue),transparent)}
+.s1-ey{font-size:10px;letter-spacing:.25em;color:var(--blue);text-transform:uppercase;margin-bottom:16px;animation-delay:.22s;position:relative}
+.s1-ttl{font-family:var(--serif);font-size:clamp(38px,5vw,64px);line-height:1.06;text-align:center;max-width:740px;animation-delay:.44s;position:relative}
+.s1-ttl em{font-style:italic;color:var(--ice)}
+.s1-sub{margin-top:16px;font-size:12.5px;color:var(--muted);animation-delay:.66s;position:relative}
+.s1-div{width:260px;height:1px;background:linear-gradient(to right,transparent,var(--blue),transparent);margin:22px auto 0;animation-delay:.76s;position:relative}
+
+/* ══ S2: PROBLEM ══ */
+#s2{padding:32px 60px 70px}
+.pcards{display:flex;gap:16px;width:100%;max-width:1020px}
+.pc{flex:1;background:var(--mid);border:1px solid rgba(59,130,246,0.13);border-radius:11px;padding:18px 15px;opacity:0;transform:translateY(14px)}
+.pc:nth-child(1){animation:fadeUp .45s .50s ease forwards}.pc:nth-child(2){animation:fadeUp .45s .66s ease forwards}.pc:nth-child(3){animation:fadeUp .45s .82s ease forwards}
+.pc-i{font-size:22px;margin-bottom:8px}.pc-l{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--amber);margin-bottom:4px}
+.pc-t{font-family:var(--serif);font-size:18px;color:var(--white);margin-bottom:7px}.pc-b{font-size:11px;color:var(--ice);line-height:1.6}
+.sbar{margin-top:22px;background:linear-gradient(135deg,rgba(59,130,246,0.12),rgba(59,130,246,0.04));border:1px solid rgba(59,130,246,0.24);border-radius:9px;padding:13px 22px;display:flex;align-items:center;gap:16px;width:100%;max-width:1020px;opacity:0;animation:fadeUp .5s 1.02s ease forwards}
+.sn{font-family:var(--serif);font-size:40px;color:var(--amber);line-height:1}.sd-t{font-size:13px;font-weight:600;color:var(--white)}.sd-s{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* ══ S3: LITERATURE ══ */
+#s3{padding:32px 60px 70px}
+.two-col{display:flex;gap:20px;width:100%;max-width:1020px;margin-top:4px}
+.col-card{flex:1;background:var(--mid);border:1px solid rgba(59,130,246,0.13);border-radius:11px;padding:20px;opacity:0}
+.col-card:nth-child(1){animation:fadeUp .45s .48s ease forwards}.col-card:nth-child(2){animation:fadeUp .45s .64s ease forwards}
+.col-h{font-size:13px;font-family:var(--serif);color:var(--blue);font-weight:600;margin-bottom:12px}
+.col-body{font-size:10.5px;color:var(--ice);line-height:1.65}
+.ref-item{margin-bottom:14px}
+.ref-lbl{font-size:11px;font-weight:600;color:var(--white);margin-bottom:3px}
+.ref-body{font-size:10px;color:var(--muted);line-height:1.55}
+
+/* ══ S4: METHODOLOGY ══ */
+#s4{padding:32px 60px 70px}
+.phases{display:flex;gap:12px;width:100%;max-width:1020px;margin-top:4px}
+.ph{flex:1;background:var(--mid);border:1px solid rgba(59,130,246,0.12);border-radius:10px;padding:16px 10px;text-align:center;opacity:0;transform:translateY(12px)}
+.ph:nth-child(1){animation:fadeUp .38s .34s ease forwards}.ph:nth-child(2){animation:fadeUp .38s .48s ease forwards}
+.ph:nth-child(3){animation:fadeUp .38s .62s ease forwards}.ph:nth-child(4){animation:fadeUp .38s .76s ease forwards}
+.ph:nth-child(5){animation:fadeUp .38s .90s ease forwards}
+.ph-num{font-family:var(--serif);font-size:30px;color:var(--blue);font-weight:700}
+.ph-lbl{font-size:11.5px;font-weight:600;color:var(--white);margin:6px 0 10px}
+.ph-body{font-size:9.5px;color:var(--ice);line-height:1.5}
+
+/* ══ S5: FEATURES ══ */
+#s5{padding:32px 60px 70px}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;width:100%;max-width:1020px;margin-top:4px}
+.fg{background:var(--mid);border:1px solid rgba(59,130,246,0.12);border-radius:10px;padding:16px;opacity:0;transform:translateY(12px)}
+.fg:nth-child(1){animation:fadeUp .38s .32s ease forwards}.fg:nth-child(2){animation:fadeUp .38s .46s ease forwards}
+.fg:nth-child(3){animation:fadeUp .38s .60s ease forwards}.fg:nth-child(4){animation:fadeUp .38s .74s ease forwards}
+.fg:nth-child(5){animation:fadeUp .38s .88s ease forwards}.fg:nth-child(6){animation:fadeUp .38s 1.02s ease forwards}
+.fg-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.fg-icon{font-size:18px;flex-shrink:0}.fg-title{font-size:11.5px;font-weight:600;color:var(--white);font-family:var(--serif)}
+.fg-body{font-size:10px;color:var(--muted);line-height:1.5}
+
+/* ══ DEMO CARD ══ */
+#sdemo{background:var(--navy);padding:32px 60px 70px}
+.demo-inner{position:relative;z-index:2;text-align:center;max-width:700px}
+.demo-badge{display:inline-block;background:rgba(252,211,77,0.15);border:1px solid var(--amber);color:var(--amber);font-size:10px;letter-spacing:.2em;text-transform:uppercase;padding:5px 16px;border-radius:20px;margin-bottom:22px}
+.demo-title{font-family:var(--serif);font-size:clamp(32px,4.5vw,56px);color:var(--white);margin-bottom:16px;line-height:1.1}
+.demo-title em{font-style:italic;color:var(--amber)}
+.demo-sub{font-size:13px;color:var(--muted);margin-bottom:32px;line-height:1.6}
+.demo-steps{display:flex;gap:20px;justify-content:center;margin-bottom:24px}
+.demo-step{text-align:center}
+.demo-step-num{font-family:var(--serif);font-size:28px;color:var(--amber);line-height:1}
+.demo-step-lbl{font-size:10px;color:var(--muted);margin-top:4px}
+.demo-note{font-size:11px;color:var(--blue);background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:10px 20px;display:inline-block}
+.demo-script-box{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);width:min(860px,90vw);background:rgba(10,20,40,0.85);border:1px solid rgba(252,211,77,0.3);border-radius:12px;padding:16px 22px;text-align:left;z-index:3;backdrop-filter:blur(8px)}
+.demo-script-label{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--amber);margin-bottom:10px;font-weight:600}
+.demo-script-text{font-size:12px;line-height:1.75;color:var(--ice);max-height:110px;overflow-y:auto;padding-right:6px}
+.demo-script-text::-webkit-scrollbar{width:4px}.demo-script-text::-webkit-scrollbar-thumb{background:rgba(252,211,77,0.3);border-radius:2px}
+.demo-script-advance{font-size:10px;color:var(--muted);margin-top:10px;text-align:center;letter-spacing:.08em}
+/* REFERENCES SLIDE */
+#s10{background:var(--navy);display:flex;align-items:center;justify-content:center;padding:32px 60px}
+.ref-inner{width:min(860px,90vw)}
+.ref-badge{display:inline-block;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:var(--blue);font-size:10px;letter-spacing:.2em;text-transform:uppercase;padding:5px 16px;border-radius:20px;margin-bottom:24px}
+.ref-list{display:flex;flex-direction:column;gap:14px}
+.ref-item{display:flex;gap:16px;align-items:flex-start}
+.ref-num{min-width:24px;height:24px;border-radius:50%;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:var(--blue);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px;flex-shrink:0}
+.ref-text{font-size:12px;color:var(--ice);line-height:1.65}
+.ref-text em{font-style:italic;color:var(--white)}
+.ref-url{color:var(--blue);font-size:11px;opacity:0.8}
+.ref-footer{margin-top:20px;font-size:10px;color:var(--muted);text-align:center;letter-spacing:.08em;border-top:1px solid rgba(255,255,255,0.06);padding-top:14px}
+
+/* ══ S6: RESULTS ══ */
+#s6{padding:32px 60px 70px}
+.stat-row{display:flex;gap:14px;width:100%;max-width:1020px;margin-bottom:20px}
+.rc{flex:1;background:var(--mid);border:1px solid rgba(59,130,246,0.13);border-radius:11px;padding:16px 14px;text-align:center;opacity:0}
+.rc:nth-child(1){animation:fadeUp .45s .28s ease forwards}.rc:nth-child(2){animation:fadeUp .45s .42s ease forwards}
+.rc:nth-child(3){animation:fadeUp .45s .56s ease forwards}.rc:nth-child(4){animation:fadeUp .45s .70s ease forwards}
+.rn{font-family:var(--serif);font-size:42px;line-height:1;color:var(--blue);display:block}
+.rl{font-size:10.5px;font-weight:600;color:var(--white);margin-top:5px}.rs{font-size:9px;color:var(--muted);margin-top:2px}
+.bottom-row{display:flex;gap:22px;width:100%;max-width:1020px;opacity:0;animation:fadeUp .5s .86s ease forwards}
+.chart-area{flex:0 0 270px}
+.ct{font-size:9px;color:var(--muted);margin-bottom:8px;letter-spacing:.1em;text-transform:uppercase}
+.brow{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.blbl{font-size:9px;color:var(--muted);width:100px;text-align:right;flex-shrink:0}
+.btrk{flex:1;height:22px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden}
+.bfill{height:100%;border-radius:3px;display:flex;align-items:center;padding-left:6px;font-size:9.5px;font-weight:600;color:#fff;width:0%;transition:width 1.2s ease}
+.bfill.red{background:var(--red)}.bfill.grn{background:var(--green)}
+.tests-area{flex:1}
+.ttl2{font-size:9px;color:var(--muted);margin-bottom:8px;letter-spacing:.1em;text-transform:uppercase}
+.trow{display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);opacity:0;font-size:10.5px;color:var(--ice)}
+.trow:nth-child(1){animation:fadeIn .28s .90s ease forwards}.trow:nth-child(2){animation:fadeIn .28s 1.04s ease forwards}
+.trow:nth-child(3){animation:fadeIn .28s 1.18s ease forwards}.trow:nth-child(4){animation:fadeIn .28s 1.32s ease forwards}
+.trow:nth-child(5){animation:fadeIn .28s 1.46s ease forwards}.trow:nth-child(6){animation:fadeIn .28s 1.60s ease forwards}
+.trow:nth-child(7){animation:fadeIn .28s 1.74s ease forwards}
+.ck{color:var(--green);font-size:11px}
+
+/* ══ S7: ARCH ══ */
+#s7{padding:32px 60px 70px;flex-direction:row;gap:24px;align-items:flex-start;padding-top:70px}
+.arch-left{flex:0 0 360px;display:flex;flex-direction:column;gap:8px;padding-top:60px}
+.amod{background:var(--card);border:1px solid rgba(59,130,246,0.18);border-radius:8px;padding:10px 14px;opacity:0;transform:translateX(-14px)}
+.amod:nth-child(1){animation:fadeUp .35s .28s ease forwards}.amod:nth-child(2){animation:fadeUp .35s .40s ease forwards}
+.amod:nth-child(3){animation:fadeUp .35s .52s ease forwards}.amod:nth-child(4){animation:fadeUp .35s .64s ease forwards}
+.amod:nth-child(5){animation:fadeUp .35s .76s ease forwards}.amod:nth-child(6){animation:fadeUp .35s .88s ease forwards}
+.af{font-size:11px;font-weight:600;color:var(--blue);font-family:monospace;margin-bottom:2px}
+.ad{font-size:9.5px;color:var(--ice)}
+.arch-right{flex:1;display:flex;flex-direction:column;gap:0;padding-top:64px;opacity:0;animation:fadeIn .6s .4s ease forwards}
+.stk-item{background:var(--mid);border:1px solid rgba(59,130,246,0.18);padding:14px 12px;text-align:center}
+.stk-item:first-child{border-radius:9px 9px 0 0}.stk-item:last-child{border-radius:0 0 9px 9px}
+.stk-val{font-family:var(--serif);font-size:16px;color:var(--white);display:block;margin-bottom:2px}
+.stk-sub{font-size:9px;color:var(--muted)}
+.stk-arr{text-align:center;color:var(--blue);font-size:16px;padding:4px 0;background:rgba(59,130,246,0.06)}
+.arch-req{margin-top:10px;background:rgba(252,211,77,0.06);border:1px solid rgba(252,211,77,0.2);border-radius:7px;padding:8px 14px;font-size:9.5px;color:var(--amber);text-align:center}
+
+/* ══ S8: FUTURE ══ */
+#s8{padding:32px 60px 70px;flex-direction:row;gap:0}
+.half{flex:1;padding:0 24px}
+.half:first-child{border-right:1px solid rgba(59,130,246,0.12);padding-left:0}
+.half-ey{font-size:10px;letter-spacing:.22em;color:var(--blue);text-transform:uppercase;margin-bottom:10px;animation-delay:.18s}
+.half-ttl{font-family:var(--serif);font-size:26px;margin-bottom:20px;animation-delay:.30s;color:var(--white)}
+.find-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;opacity:0}
+.find-row:nth-child(1){animation:fadeUp .38s .44s ease forwards}.find-row:nth-child(2){animation:fadeUp .38s .58s ease forwards}
+.find-row:nth-child(3){animation:fadeUp .38s .72s ease forwards}.find-row:nth-child(4){animation:fadeUp .38s .86s ease forwards}
+.find-ck{color:var(--green);font-size:14px;margin-top:1px;flex-shrink:0}
+.find-body{font-size:11px;color:var(--ice);line-height:1.55}
+.fw-card{background:var(--card);border:1px solid rgba(59,130,246,0.12);border-radius:10px;padding:16px;display:flex;gap:11px;margin-bottom:12px;opacity:0}
+.fw-card:nth-child(1){animation:fadeUp .38s .44s ease forwards}.fw-card:nth-child(2){animation:fadeUp .38s .58s ease forwards}
+.fw-card:nth-child(3){animation:fadeUp .38s .72s ease forwards}.fw-card:nth-child(4){animation:fadeUp .38s .86s ease forwards}
+.fw-icon{font-size:20px;flex-shrink:0}.fw-title{font-size:12px;font-weight:600;color:var(--white);margin-bottom:3px}
+.fw-body{font-size:10px;color:var(--muted);line-height:1.5}
+
+/* ══ S9: END ══ */
+#s9{}
+.e-bg{position:absolute;inset:0;background:radial-gradient(ellipse 70% 50% at 50% 50%,rgba(59,130,246,0.1),transparent 70%)}
+.e-gr{position:absolute;inset:0;background-image:linear-gradient(rgba(59,130,246,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,0.03) 1px,transparent 1px);background-size:60px 60px}
+.e-c{position:relative;z-index:2;text-align:center;opacity:0;animation:fadeUp .65s .28s ease forwards}
+.e-ey{font-size:9.5px;letter-spacing:.25em;color:var(--blue);text-transform:uppercase;margin-bottom:14px}
+.e-ttl{font-family:var(--serif);font-size:clamp(30px,4vw,54px);color:var(--white);margin-bottom:10px;line-height:1.1}
+.e-ttl em{font-style:italic;color:var(--ice)}
+.e-sub{font-size:12px;color:var(--muted);margin-bottom:26px}
+.e-div{width:180px;height:1px;background:linear-gradient(to right,transparent,var(--blue),transparent);margin:0 auto 22px}
+.e-team{display:flex;gap:18px;justify-content:center;flex-wrap:wrap}
+.em{font-size:10px;color:var(--muted)}.em strong{color:var(--ice);font-weight:500;display:block}
+
+/* DRAG CARD */
+.dcard{position:fixed;background:rgba(59,130,246,0.2);border:1px solid var(--blue);border-radius:3px;height:22px;display:flex;align-items:center;padding:0 5px;font-size:9px;gap:4px;color:var(--white);pointer-events:none;z-index:50;opacity:0;width:142px;white-space:nowrap}
+.sd2{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.dg{background:var(--green)}.da{background:var(--amber)}.db{background:#38bdf8}.dm{background:var(--muted)}
+.sl{height:22px;border-radius:3px;display:flex;align-items:center;padding:0 5px;font-size:9px;gap:4px;border:1px solid rgba(255,255,255,0.07)}
+.sl.fi{background:rgba(59,130,246,0.12);border-color:rgba(59,130,246,0.25)}
+.sl.em2{background:rgba(255,255,255,0.03);border-style:dashed;color:var(--muted)}
+.sl.td{background:rgba(252,211,77,0.1);border-color:rgba(252,211,77,0.25)}
+.sl.md{background:rgba(56,189,248,0.1);border-color:rgba(56,189,248,0.25)}
+</style>
+</head>
+<body>
+<div id="stage">
+<div id="wipe"></div>
+
+<!-- S0: TEAM INTRO -->
+<div class="scene active" id="s0">
+  <div class="bg-rad"></div><div class="bg-gr"></div>
+  <div class="ai sey" style="animation-delay:.18s;position:relative">Meet the Team</div>
+  <div class="ai sttl" style="animation-delay:.32s;position:relative;margin-bottom:24px">Squadron Manning &amp; Readiness Visualization Tool</div>
+  <div class="mcards">
+    <div class="mc" id="mc0"><div class="mc-av" style="background:linear-gradient(135deg,#1e3a5f,#1d4ed8)">🛡️</div><div class="mc-name">Nathaniel Long</div><div class="mc-role">App Developer · Data Architect</div><div class="mc-q" id="mq0">I'm Nathaniel Long, application developer and data architect on Team SMRVT. I led the architectural decisions for the system and built the core data layer that powers everything you're going to see today.</div><div class="mc-wv" id="mw0"><div class="mc-wb"></div><div class="mc-wb"></div><div class="mc-wb"></div><div class="mc-wb"></div><div class="mc-wb"></div></div></div>
+    <div class="mc" id="mc1"><div class="mc-av" style="background:linear-gradient(135deg,#1a3a2a,#166534)">📊</div><div class="mc-name">Matt Keeler</div><div class="mc-role">Research Analyst · Documentation</div><div class="mc-q" id="mq1">I ensured our work was grounded in relevant literature and that every deliverable met the course requirements on time.</div><div class="mc-wv" id="mw1"><div class="mc-wb"></div><div class="mc-wb"></div><div class="mc-wb"></div><div class="mc-wb"></div><div class="mc-wb"></div></div></div>
+    <div class="mc" id="mc2"><div class="mc-av" style="background:linear-gradient(135deg,#3b1f5e,#7c3aed)">📋</div><div class="mc-name">Zachary Weeks</div><div class="mc-role">Project Manager · Tech Writer</div><div class="mc-q" id="mq2">I kept the team on schedule, coordinated deliverables, and made sure our documentation was clear and submission-ready every week.</div><div class="mc-wv" id="mw2"><div class="mc-wb"></div><div class="mc-wb"></div><div class="mc-wb"></div><div class="mc-wb"></div><div class="mc-wb"></div></div></div>
+    <div class="mc" id="mc3"><div class="mc-av" style="background:linear-gradient(135deg,#3b2010,#b45309)">🎯</div><div class="mc-name">Dustin Traylor</div><div class="mc-role">Program Lead · Data Analyst</div><div class="mc-q" id="mq3">I oversaw the overall project direction and focused on how data flows through the system from import to readiness output.</div><div class="mc-wv" id="mw3"><div class="mc-wb"></div><div class="mc-wb"></div><div class="mc-wb"></div><div class="mc-wb"></div><div class="mc-wb"></div></div></div>
+    <div class="mc" id="mc4"><div class="mc-av" style="background:linear-gradient(135deg,#1f3a3a,#0f766e)">💻</div><div class="mc-name">Derick Pabon</div><div class="mc-role">Code Developer · Dataset Designer</div><div class="mc-q" id="mq4">I built core application features and designed the sample dataset so the tool launches with realistic personnel data right out of the box.</div><div class="mc-wv" id="mw4"><div class="mc-wb"></div><div class="mc-wb"></div><div class="mc-wb"></div><div class="mc-wb"></div><div class="mc-wb"></div></div></div>
+  </div>
+</div>
+
+<!-- S1: TITLE -->
+<div class="scene" id="s1"><div class="bg-rad"></div><div class="bg-gr"></div><div class="s1-ac"></div>
+  <div class="ai s1-ey">APTC 495 · UMGC · June 2026</div>
+  <div class="ai s1-ttl">Squadron Manning &amp; <em>Readiness</em><br>Visualization Tool</div>
+  <div class="ai s1-sub">SMRVT &nbsp;·&nbsp; Capstone Project Presentation</div>
+  <div class="ai s1-div"></div>
+</div>
+
+<!-- S2: PROBLEM -->
+<div class="scene" id="s2">
+  <div class="ai sey">The Problem</div>
+  <div class="ai sttl">Military readiness tracking was broken.</div>
+  <div class="pcards">
+    <div class="pc"><div class="pc-i">📋</div><div class="pc-l">Problem 01</div><div class="pc-t">Manual &amp; Error-Prone</div><div class="pc-b">Squadron leaders tracked personnel in spreadsheets — no live updates, high risk of outdated or overwritten data with every change.</div></div>
+    <div class="pc"><div class="pc-i">👁️</div><div class="pc-l">Problem 02</div><div class="pc-t">No Readiness Visibility</div><div class="pc-b">Commanders had no instant view of available vs. TDY, medical, or deployed personnel. They had to count it manually, every time.</div></div>
+    <div class="pc"><div class="pc-i">🔓</div><div class="pc-l">Problem 03</div><div class="pc-t">No Access Control</div><div class="pc-b">Shared files gave everyone equal edit rights. No role separation — one wrong click could overwrite critical manning data.</div></div>
+  </div>
+  <div class="sbar"><div class="sn">45 min</div><div><div class="sd-t">Average time for a single manual update cycle</div><div class="sd-s">Twice a week — over 70 hours of leadership time lost per year, per squadron.</div></div></div>
+</div>
+
+<!-- S3: LITERATURE -->
+<div class="scene" id="s3">
+  <div class="ai sey">Background &amp; Literature</div>
+  <div class="ai sttl">Grounded in doctrine and research.</div>
+  <div class="two-col">
+    <div class="col-card"><div class="col-h">Operational Context</div><div class="col-body">Military personnel readiness tracking is a mission-critical function. Incorrect or stale manning data directly affects sortie generation, weapons load planning, and force protection decisions.<br><br>Existing DoD solutions (MICT, LIMS-EV) are network-dependent, slow to update, and provide no visual drag-and-drop interface for rapid reassignment.<br><br>SMRVT was designed to fill the gap at the squadron level — where decisions happen quickly and network access is not always guaranteed.</div></div>
+    <div class="col-card">
+      <div class="col-h">Supporting Literature</div>
+      <div class="ref-item"><div class="ref-lbl">Offline-First Design</div><div class="ref-body">PouchDB / CouchDB replication (Apache, 2023) — persistent local storage with optional remote sync, meeting DoD self-contained environment requirements.</div></div>
+      <div class="ref-item"><div class="ref-lbl">Access Control</div><div class="ref-body">NIST SP 800-53 AC-2 / AC-3 — least-privilege principles enforced by restricting structural edits to authorized admin accounts only.</div></div>
+      <div class="ref-item"><div class="ref-lbl">Readiness Metrics</div><div class="ref-body">AFI 10-201 (Force Readiness Reporting) — defines how TDY, Medical, Leave, and Deployed statuses are excluded from unit readiness calculations.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- S4: METHODOLOGY -->
+<div class="scene" id="s4">
+  <div class="ai sey">Design &amp; Development Approach</div>
+  <div class="ai sttl">Five phases. One working system.</div>
+  <div class="phases">
+    <div class="ph"><div class="ph-num">01</div><div class="ph-lbl">Requirements</div><div class="ph-body">Gathered from USAF munitions unit workflows. Defined role separation, offline-first capability, and readiness calculation logic.</div></div>
+    <div class="ph"><div class="ph-num">02</div><div class="ph-lbl">Architecture</div><div class="ph-body">Modular ES6 split: main.js · state.js · config.js · dragDrop.js · metrics.js · importExport.js</div></div>
+    <div class="ph"><div class="ph-num">03</div><div class="ph-lbl">Development</div><div class="ph-body">Iterative 5-person build. PouchDB persistence, drag-and-drop swap logic, 20-step undo stack, What-If mode.</div></div>
+    <div class="ph"><div class="ph-num">04</div><div class="ph-lbl">Integration</div><div class="ph-body">PouchDB ↔ IndexedDB local. Optional CouchDB / Cloudant bidirectional replication for multi-user sync.</div></div>
+    <div class="ph"><div class="ph-num">05</div><div class="ph-lbl">Testing</div><div class="ph-body">10 structured test cases: functional, usability, data validation, integration, and regression. All 10 passed.</div></div>
+  </div>
+</div>
+
+<!-- S5: FEATURES -->
+<div class="scene" id="s5">
+  <div class="ai sey">Key Features</div>
+  <div class="ai sttl">Every feature maps to a stated requirement.</div>
+  <div class="feat-grid">
+    <div class="fg"><div class="fg-row"><div class="fg-icon">🖱️</div><div class="fg-title">Drag &amp; Drop Assignment</div></div><div class="fg-body">Move personnel between section slots with automatic swap logic and instant readiness recalculation.</div></div>
+    <div class="fg"><div class="fg-row"><div class="fg-icon">🔒</div><div class="fg-title">Role-Based Access Control</div></div><div class="fg-body">Admin / User accounts with session persistence. Structural edits restricted to authorized admin only.</div></div>
+    <div class="fg"><div class="fg-row"><div class="fg-icon">💾</div><div class="fg-title">Offline-First PouchDB</div></div><div class="fg-body">All data persists locally in IndexedDB. No server or internet connection required during operation.</div></div>
+    <div class="fg"><div class="fg-row"><div class="fg-icon">📊</div><div class="fg-title">Live Readiness Metrics</div></div><div class="fg-body">Centralized metrics engine calculates manning % and readiness % across all sections in real time.</div></div>
+    <div class="fg"><div class="fg-row"><div class="fg-icon">☁️</div><div class="fg-title">Remote CouchDB Sync</div></div><div class="fg-body">Optional bidirectional sync with CouchDB or IBM Cloudant — live updates across multiple clients.</div></div>
+    <div class="fg"><div class="fg-row"><div class="fg-icon">📄</div><div class="fg-title">CSV &amp; PDF Export</div></div><div class="fg-body">Full roster CSV export for backup and re-import. Landscape PDF report with metrics and full personnel summary.</div></div>
+  </div>
+</div>
+
+<!-- DEMO TRANSITION CARD -->
+<div class="scene" id="sdemo">
+  <div class="bg-rad"></div><div class="bg-gr"></div>
+  <div class="demo-inner ai" style="animation-delay:.25s">
+    <div class="demo-badge">🎬 Live Application Demo</div>
+    <div class="demo-title">Now showing the<br><em>actual tool.</em></div>
+    <div class="demo-sub">The next segment is a live screen recording of SMRVT running in the browser.<br>Narrated walkthrough of every major feature.</div>
+    <div class="demo-steps">
+      <div class="demo-step"><div class="demo-step-num">①</div><div class="demo-step-lbl">Login &amp; Board</div></div>
+      <div class="demo-step"><div class="demo-step-num">②</div><div class="demo-step-lbl">Add Personnel</div></div>
+      <div class="demo-step"><div class="demo-step-num">③</div><div class="demo-step-lbl">Drag &amp; Drop</div></div>
+      <div class="demo-step"><div class="demo-step-num">④</div><div class="demo-step-lbl">Deployed Panel</div></div>
+      <div class="demo-step"><div class="demo-step-num">⑤</div><div class="demo-step-lbl">DEROS &amp; Export</div></div>
+    </div>
+    <div class="demo-note">⏱ Live demo segment runs approximately 4–5 minutes</div>
+  </div>
+  <div class="demo-script-box ai" style="animation-delay:.5s">
+    <div class="demo-script-label">🎙️ Dustin Traylor — Recording Script (narrated over screen demo)</div>
+    <div class="demo-script-text">
+      Welcome to the live demonstration of SMRVT. What you are seeing on screen is the actual application running in a browser — no mockup, no slides. We are starting at the login screen. I am logging in as admin, which gives full access to every feature of the board. Once authenticated, the dashboard loads instantly with our full personnel dataset already populated. You can see every service member listed with their rank, AFSC, current status, and section assignment. Now watch the drag-and-drop. I am picking up a card and moving it into an open slot in Flight A. The readiness percentage in the top panel updates the moment I drop it — that is the live calculation running automatically. If a slot is already filled, the two cards swap positions with no data loss. Now I am going to add a brand new personnel record. I fill in the name, rank, AFSC, and set the status to TDY. When I save, the card appears on the board and the readiness count adjusts immediately to reflect that this person is unavailable. Over here is the deployed panel. Personnel flagged as deployed are tracked separately with their expected DEROS return date, so commanders always know who is downrange and when they are coming back. Finally, I will show the export. One click generates a full landscape PDF report — every person, their rank, status, and section assignment, formatted and ready to hand to leadership. No spreadsheet, no manual entry, no waiting. That is SMRVT.
+    </div>
+    <div class="demo-script-advance">Press → or click the arrow to continue to results after the demo</div>
+  </div>
+</div>
+
+<!-- S6: RESULTS -->
+<div class="scene" id="s6">
+  <div class="ai sey">Key Results</div>
+  <div class="ai sttl">The numbers speak for themselves.</div>
+  <div class="stat-row">
+    <div class="rc"><span class="rn">95%</span><div class="rl">Reduction in update time</div><div class="rs">45 min → under 2 min</div></div>
+    <div class="rc"><span class="rn">70 hrs</span><div class="rl">Returned to leadership</div><div class="rs">Per squadron per year</div></div>
+    <div class="rc"><span class="rn">$4–5K</span><div class="rl">Estimated annual savings</div><div class="rs">vs. GS-12 labor cost</div></div>
+    <div class="rc"><span class="rn">10/10</span><div class="rl">Test cases passed</div><div class="rs">Zero critical defects</div></div>
+  </div>
+  <div class="bottom-row">
+    <div class="chart-area">
+      <div class="ct">Update Time — Before vs. After</div>
+      <div class="brow"><div class="blbl">Manual spreadsheet</div><div class="btrk"><div class="bfill red" id="br">45 min</div></div></div>
+      <div class="brow"><div class="blbl">SMRVT</div><div class="btrk"><div class="bfill grn" id="bg">&lt;2 min</div></div></div>
+    </div>
+    <div class="tests-area">
+      <div class="ttl2">Week 7 Testing — All Passed</div>
+      <div class="trow"><span class="ck">✓</span> Add / Edit Personnel</div>
+      <div class="trow"><span class="ck">✓</span> Drag-and-Drop Assignment</div>
+      <div class="trow"><span class="ck">✓</span> Readiness % Calculation</div>
+      <div class="trow"><span class="ck">✓</span> Form Validation</div>
+      <div class="trow"><span class="ck">✓</span> ADMIN Login &amp; Privileges</div>
+      <div class="trow"><span class="ck">✓</span> USER Restrictions Enforced</div>
+      <div class="trow"><span class="ck">✓</span> Deployed Status Updates</div>
+    </div>
+  </div>
+</div>
+
+<!-- S7: ARCHITECTURE -->
+<div class="scene" id="s7">
+  <div style="position:relative;z-index:2;width:100%;max-width:1020px;padding-top:10px">
+    <div class="ai sey" style="animation-delay:.15s">System Architecture</div>
+    <div class="ai sttl" style="animation-delay:.28s;margin-bottom:16px">Six modules. One clean system.</div>
+    <div style="display:flex;gap:20px;align-items:flex-start">
+      <div class="arch-left" style="padding-top:0">
+        <div class="amod"><div class="af">main.js</div><div class="ad">Core app logic, rendering, modals, UI event handling</div></div>
+        <div class="amod"><div class="af">state.js</div><div class="ad">PouchDB persistence, auth, 20-step undo, sync engine</div></div>
+        <div class="amod"><div class="af">config.js</div><div class="ad">Branch definitions, positions, qualifications, sample data</div></div>
+        <div class="amod"><div class="af">dragDrop.js</div><div class="ad">Drag-and-drop, swap logic, qual enforcement, routing</div></div>
+        <div class="amod"><div class="af">metrics.js</div><div class="ad">Centralized readiness/manning — single source of truth</div></div>
+        <div class="amod"><div class="af">importExport.js</div><div class="ad">CSV import/export, landscape PDF generation</div></div>
+      </div>
+      <div class="arch-right" style="padding-top:0">
+        <div class="stk-item"><span class="stk-val">Browser UI</span><span class="stk-sub">index.html</span></div>
+        <div class="stk-arr">↕</div>
+        <div class="stk-item"><span class="stk-val">PouchDB</span><span class="stk-sub">Abstraction layer</span></div>
+        <div class="stk-arr">↕</div>
+        <div class="stk-item"><span class="stk-val">IndexedDB</span><span class="stk-sub">Local persistence</span></div>
+        <div class="stk-arr">⇄</div>
+        <div class="stk-item"><span class="stk-val">CouchDB / Cloudant</span><span class="stk-sub">Optional remote sync</span></div>
+        <div class="arch-req">REQ: Self-contained · No external connectivity required · Local DB persistence · Optional remote consistency</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S8: CONCLUSION + FUTURE -->
+<div class="scene" id="s8">
+  <div style="display:flex;width:100%;max-width:1020px;gap:0;height:100%;align-items:center">
+    <div class="half" style="padding-left:0">
+      <div class="ai half-ey" style="animation-delay:.15s">Conclusion</div>
+      <div class="ai half-ttl" style="animation-delay:.28s">What we delivered.</div>
+      <div class="find-row"><div class="find-ck">✓</div><div class="find-body">Replaced a manual spreadsheet-based process with a real-time visual readiness dashboard.</div></div>
+      <div class="find-row"><div class="find-ck">✓</div><div class="find-body">All 10 test cases passed — features functional, access enforced, offline persistence confirmed.</div></div>
+      <div class="find-row"><div class="find-ck">✓</div><div class="find-body">95% reduction in update time, returning 70+ hours annually to squadron leadership.</div></div>
+      <div class="find-row"><div class="find-ck">✓</div><div class="find-body">Offline-first architecture with optional remote sync meets DoD self-contained environment requirements.</div></div>
+    </div>
+    <div class="half">
+      <div class="ai half-ey" style="animation-delay:.15s">Future Work</div>
+      <div class="ai half-ttl" style="animation-delay:.28s">Where SMRVT goes next.</div>
+      <div class="fw-card"><div class="fw-icon">🔐</div><div><div class="fw-title">PII Export Encryption</div><div class="fw-body">Encrypted export to protect personnel data outside secure environments.</div></div></div>
+      <div class="fw-card"><div class="fw-icon">👥</div><div><div class="fw-title">Section-Level User Views</div><div class="fw-body">Restrict visibility to each user's own section — real multi-echelon access control.</div></div></div>
+      <div class="fw-card"><div class="fw-icon">🔑</div><div><div class="fw-title">Backend Authentication</div><div class="fw-body">Replace hardcoded credentials with OAuth or CAC-based login for DoD deployment.</div></div></div>
+      <div class="fw-card"><div class="fw-icon">🌐</div><div><div class="fw-title">Multi-Branch Expansion</div><div class="fw-body">config.js already structured for Army, Navy, Marines — zero changes to other modules.</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- S9: END -->
+<div class="scene" id="s9">
+  <div class="e-bg"></div><div class="e-gr"></div>
+  <div class="e-c">
+    <div class="e-ey">SMRVT · APTC 495 · UMGC · 2026</div>
+    <div class="e-ttl">Built for the mission.<br><em>Ready for the field.</em></div>
+    <div class="e-sub">A browser-based, offline-first readiness tool for USAF munitions squadrons.</div>
+    <div class="e-div"></div>
+    <div class="e-team">
+      <div class="em"><strong>Nathaniel Long</strong>App Developer</div>
+      <div class="em"><strong>Matt Keeler</strong>Research Analyst</div>
+      <div class="em"><strong>Zachary Weeks</strong>Project Manager</div>
+      <div class="em"><strong>Dustin Traylor</strong>Program Lead</div>
+      <div class="em"><strong>Derick Pabon</strong>Code Developer</div>
+    </div>
+  </div>
+</div>
+
+<!-- S10: REFERENCES -->
+<div class="scene" id="s10">
+  <div class="bg-rad"></div><div class="bg-gr"></div>
+  <div class="ref-inner ai" style="animation-delay:.2s">
+    <div class="ref-badge">📚 References</div>
+    <div class="ref-list">
+      <div class="ref-item">
+        <div class="ref-num">1</div>
+        <div class="ref-text">Apache Software Foundation. (2024). <em>PouchDB: The JavaScript database that syncs</em> [Software documentation]. Apache CouchDB. <span class="ref-url">https://pouchdb.com/guides/</span></div>
+      </div>
+      <div class="ref-item">
+        <div class="ref-num">2</div>
+        <div class="ref-text">Apache Software Foundation. (2024). <em>Apache CouchDB documentation</em> [Software documentation]. <span class="ref-url">https://docs.couchdb.org/</span></div>
+      </div>
+      <div class="ref-item">
+        <div class="ref-num">3</div>
+        <div class="ref-text">National Institute of Standards and Technology. (2020). <em>Security and privacy controls for information systems and organizations</em> (NIST Special Publication 800-53, Rev. 5). U.S. Department of Commerce. <span class="ref-url">https://doi.org/10.6028/NIST.SP.800-53r5</span></div>
+      </div>
+      <div class="ref-item">
+        <div class="ref-num">4</div>
+        <div class="ref-text">Department of the Air Force. (2021). <em>Status of resources and training system</em> (Air Force Instruction 10-201). U.S. Air Force. <span class="ref-url">https://www.af.mil/Portals/1/documents/af_doctrine/AFI10-201.pdf</span></div>
+      </div>
+      <div class="ref-item">
+        <div class="ref-num">5</div>
+        <div class="ref-text">IBM Corporation. (2024). <em>IBM Cloudant documentation: Database replication and synchronization</em>. IBM Cloud. <span class="ref-url">https://cloud.ibm.com/docs/Cloudant</span></div>
+      </div>
+      <div class="ref-item">
+        <div class="ref-num">6</div>
+        <div class="ref-text">Mozilla Developer Network. (2024). <em>IndexedDB API</em> [Web documentation]. MDN Web Docs. <span class="ref-url">https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API</span></div>
+      </div>
+    </div>
+    <div class="ref-footer">All sources cited in APA 7th edition format · APTC 495 · UMGC · 2026</div>
+  </div>
+</div>
+
+</div><!-- /stage -->
+
+<!-- NARRATOR BAR -->
+<div id="nbar">
+  <div id="nbar-av">🎙️</div>
+  <div style="flex:1;min-width:0"><div id="nbar-name">Narrator</div><div id="nbar-text"><span id="nbar-words"></span><span id="nbar-cur"></span></div></div>
+  <div id="nbar-wave"><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div></div>
+</div>
+
+<!-- PROGRESS + NAV + CONTROLS -->
+<div id="progress"></div>
+<div id="nav"></div>
+<div id="counter">1 / 11</div>
+<div id="total-time">~12 min total</div>
+<div id="ctrl">
+  <button class="cbtn" onclick="prevScene()">← Prev</button>
+  <button class="cbtn go on" id="nbtn" onclick="toggleNarration()">🔊 Narrating</button>
+  <button class="cbtn" id="abtn" onclick="toggleAuto()">▶ Auto Play</button>
+  <button class="cbtn" onclick="nextScene()">Next →</button>
+</div>
+
+<script>
+// ══════════════════════════════════════
+// TEAM
+// ══════════════════════════════════════
+const TEAM = [
+  { id:'nathaniel', name:'Nathaniel Long',  emoji:'🛡️', color:'#3B82F6' },
+  { id:'matt',      name:'Matt Keeler',     emoji:'📊', color:'#22c55e' },
+  { id:'zach',      name:'Zachary Weeks',   emoji:'📋', color:'#a855f7' },
+  { id:'dustin',    name:'Dustin Traylor',  emoji:'🎯', color:'#f59e0b' },
+  { id:'derick',    name:'Derick Pabon',    emoji:'💻', color:'#14b8a6' },
+];
+
+const INTROS = [
+  "I'm Nathaniel Long, application developer and data architect on Team SMRVT. I led the architectural decisions for the system and built the core data layer that powers everything you're going to see today.",
+  "I'm Matt Keeler, research analyst and documentation lead. I ensured our work was grounded in relevant literature and that every deliverable met the course requirements.",
+  "I'm Zachary Weeks, project manager and technical writer. I kept the team on schedule, coordinated all deliverables, and made sure our documentation was clear and submission-ready every week.",
+  "I'm Dustin Traylor, program lead and data analyst. I oversaw the overall project direction and focused on how data flows through the system from import to readiness output.",
+  "I'm Derick Pabon, code developer and dataset designer. I built out core application features and designed the sample dataset so the tool launches with realistic personnel data right out of the box."
+];
+
+// Scene IDs in order
+const SCENE_IDS = ['s0','s1','s2','s3','s4','s5','sdemo','s6','s7','s8','s9','s10'];
+// Narrator for each scene — Matt is primary narrator (title + literature + conclusion)
+const NARRATOR = [null,'matt','zach','matt','nathaniel','derick','dustin','derick','nathaniel','matt','zach',null];
+
+const SCRIPTS = [
+  null, // s0 = sequential intros
+  // s1 title — Matt opens as primary narrator
+  "Good morning. I'm Matt Keeler, and on behalf of Team SMRVT, welcome. You just met the full team — five people, five roles, one system. What we built is the Squadron Manning and Readiness Visualization Tool. A browser-based application that gives military unit leaders real-time visibility into who's available, who's deployed, and how ready their unit is — with no internet connection required. Let me walk you through what we built, why we built it, and what it delivers.",
+  // s2 problem — Zach
+  "Before SMRVT, squadron leaders were tracking their personnel in spreadsheets. That means manually updating a file, passing it around, and hoping nobody saved over your changes every time a status changed. That is not a system — that is organized chaos. Commanders had no instant view of who was actually available versus TDY, medical, or deployed — they had to count it themselves every single time. And shared spreadsheets have no permissions at all — anyone could change anything. One wrong click could overwrite critical data. Put all three together, and you have a process averaging 45 minutes per update cycle, twice a week, every week. That is over 70 hours of leadership time lost per year, per squadron. We fixed that.",
+  // s3 literature — Matt (research and documentation lead)
+  "Let me give you the context behind our design decisions. The operational reality for units like this is that network access is not guaranteed. If you are downrange or in a degraded environment, you cannot depend on cloud software. So offline-first was not just a nice feature — it was a requirement. We grounded that decision in the PouchDB and CouchDB replication model from Apache. On access control, we followed NIST SP 800-53 — specifically the AC-2 and AC-3 controls around account management and least-privilege enforcement. And for the readiness calculation logic itself, we referenced AFI 10-201 — the Air Force instruction that defines exactly how personnel status maps to unit readiness reporting. TDY, medical, leave, and deployed are excluded from the readiness count. That is not arbitrary — that is doctrine.",
+  // s4 methodology — Nathaniel
+  "Here is how we actually built this. We started with requirements pulled from real USAF munitions unit workflows. That defined the role separation we needed, the offline capability, and how the readiness math had to behave. From there we designed a modular architecture — six focused ES6 modules, each owning a specific job. That decision paid off during development. With five people on the team, modular code meant we were not constantly stepping on each other. Integration was PouchDB talking to IndexedDB locally, with optional CouchDB or Cloudant remote for multi-user sync. And testing — ten structured test cases covering functional, usability, validation, integration, and regression. All ten passed.",
+  // s5 features — Derick
+  "Before the live demo, let me walk you through what you are going to see. The board has drag-and-drop assignment — pick up a card, drop it in a slot, and readiness numbers update immediately. Swap logic is built in — if a slot is occupied, the two people exchange. Role-based access is enforced — admin gets full structural control, users can work the board but cannot break anything. Everything persists offline through PouchDB and IndexedDB. And if you need to share the data, CSV or a landscape PDF report is one click. Now let's look at the actual tool.",
+  // sdemo — Dustin narrates over screen recording
+  "Welcome to the live demonstration of SMRVT. What you are seeing on screen is the actual application running in a browser — no mockup, no slides. We are starting at the login screen. I am logging in as admin, which gives full access to every feature of the board. Once authenticated, the dashboard loads instantly with our full personnel dataset already populated. You can see every service member listed with their rank, AFSC, current status, and section assignment. Now watch the drag-and-drop. I am picking up a card and moving it into an open slot in Flight A. The readiness percentage in the top panel updates the moment I drop it — that is the live calculation running automatically. If a slot is already filled, the two cards swap positions with no data loss. Now I am going to add a brand new personnel record. I fill in the name, rank, AFSC, and set the status to TDY. When I save, the card appears on the board and the readiness count adjusts immediately to reflect that this person is unavailable. Over here is the deployed panel. Personnel flagged as deployed are tracked separately with their expected DEROS return date, so commanders always know who is downrange and when they are coming back. Finally, I will show the export. One click generates a full landscape PDF report — every person, their rank, status, and section assignment, formatted and ready to hand to leadership. No spreadsheet, no manual entry, no waiting. That is SMRVT.",
+  // s6 results — Derick
+  "Now let's talk about what this tool actually delivers. Ninety-five percent reduction in update time. Forty-five minutes per cycle down to under two minutes. For a squadron running those updates twice a week, that is 70 hours returned to leadership every single year. Against a GS-12 salary, that translates to four to five thousand dollars in annual savings — and the tool costs nothing to deploy because it runs entirely in the browser. On the testing side, we ran ten structured test cases in Week 7. All ten passed. Zero critical defects. The bar chart on the left puts the before and after in perspective. There is no comparison.",
+  // s7 architecture — Nathaniel
+  "Let me take a minute on the architecture. On the left you have our six modules. Each one owns a specific job and does not reach into another module's business. If a readiness calculation was wrong, you went to metrics dot J S. If drag-and-drop broke, you went to dragDrop dot J S. You were not hunting through ten thousand lines of code. On the right is the storage stack. PouchDB abstracts the local IndexedDB layer underneath. If a remote CouchDB or Cloudant instance is configured, changes replicate bidirectionally in real time. That requirement bar at the bottom is not decoration — every item on it was a stated project requirement, and every one is satisfied by this architecture.",
+  // s8 conclusion — Matt closes as primary narrator
+  "Wrapping up. SMRVT does exactly what we set out to do. It replaced a manual error-prone process with a real-time visual readiness board that runs offline, enforces role-based access, integrates with a local database, and gives a commander an instant answer to the question — how ready is my unit right now? On the right you have our future roadmap. PII encryption for real deployment. Section-level user views for multi-echelon access control. Backend authentication to replace the hardcoded credentials. And multi-branch expansion — the configuration is already structured for it. Zero changes to any other module. This tool has a real use case, a working prototype, and a clear path forward. On behalf of the entire team — thank you.",
+  // s9 end — Zach
+  "That concludes our presentation of the Squadron Manning and Readiness Visualization Tool. We are available for questions.",
+  null, // s10 references — no narration
+];
+
+// ══════════════════════════════════════
+// EMBEDDED AUDIO DATA
+// ══════════════════════════════════════
+const AUDIO_DATA = {
+  "intro_nathaniel": "audio/intro_nathaniel.mp3",
+  "intro_matt":      "audio/intro_matt.mp3",
+  "intro_zach":      "audio/intro_zach.mp3",
+  "intro_dustin":    "audio/intro_dustin.mp3",
+  "intro_derick":    "audio/intro_derick.mp3",
+  "scene_1":  "audio/scene_1.mp3",
+  "scene_2":  "audio/scene_2.mp3",
+  "scene_3":  "audio/scene_3.mp3",
+  "scene_4":  "audio/scene_4.mp3",
+  "scene_5":  "audio/scene_5.mp3",
+  "scene_6":  "audio/scene_6.mp3",
+  "scene_7":  "audio/scene_7.mp3",
+  "scene_8":  "audio/scene_8.mp3",
+  "scene_9":  "audio/scene_9.mp3",
+  "scene_10": "audio/scene_10.mp3",
+};
+
+// Audio key per scene index (null = no audio)
+const SCENE_AUDIO = [null,'scene_1','scene_2','scene_3','scene_4','scene_5',null,'scene_6','scene_7','scene_8','scene_10',null];
+// Intro audio keys in TEAM order
+const INTRO_AUDIO = ['intro_nathaniel','intro_matt','intro_zach','intro_dustin','intro_derick'];
+
+// ══════════════════════════════════════
+// SCENE STATE
+// ══════════════════════════════════════
+const SCENE_ELS = SCENE_IDS.map(id => document.getElementById(id));
+const TOTAL = SCENE_ELS.length;
+let current = 0;
+let narrating = true;
+let isAuto = false;
+let autoTimer = null;
+let transitioning = false;
+let currentAudio = null;
+let typeTimer = null;
+let introIdx = 0;
+
+// Durations per scene (ms) — for auto-advance when audio is off
+const DURATIONS = [
+  2000,  // s0 team
+  30016,  // s1 title
+  51448,  // s2 problem
+  53584,  // s3 literature
+  46840,  // s4 methodology
+  36880,  // s5 features
+  54328,  // sdemo
+  43936,  // s6 results
+  43624,  // s7 architecture
+  48520,  // s8 conclusion
+  9135,  // s9 closing
+  8000,  // s10 references
+];
+
+// ══════════════════════════════════════
+// NAV DOTS
+// ══════════════════════════════════════
+const navEl = document.getElementById('nav');
+SCENE_IDS.forEach((id,i) => {
+  const d = document.createElement('div');
+  d.className = 'ndot' + (i===0?' active':'') + (id==='sdemo'?' demo':'');
+  d.title = id==='sdemo'?'Live Demo Transition':id;
+  d.onclick = () => goTo(i);
+  navEl.appendChild(d);
+});
+
+function updateNav() {
+  document.querySelectorAll('.ndot').forEach((d,i) => d.classList.toggle('active', i===current));
+  document.getElementById('counter').textContent = `${current+1} / ${TOTAL}`;
+  document.getElementById('progress').style.width = ((current+1)/TOTAL*100)+'%';
+}
+
+// ══════════════════════════════════════
+// TRANSITIONS
+// ══════════════════════════════════════
+const wipe = document.getElementById('wipe');
+
+function goTo(idx) {
+  if (transitioning || idx===current) return;
+  transitioning = true;
+  stopAudio();
+  wipe.classList.add('show');
+  setTimeout(() => {
+    SCENE_ELS[current].classList.remove('active');
+    current = idx;
+    SCENE_ELS[current].classList.add('active');
+    updateNav();
+    restartAnims(SCENE_ELS[current]);
+    setTimeout(() => {
+      wipe.classList.remove('show');
+      transitioning = false;
+      if (current === 7) triggerBars();
+      if (narrating) {
+        if (current === 0) runTeamIntro();
+        else playScene(current);
+      }
+    }, 360);
+  }, 320);
+}
+
+function restartAnims(scene) {
+  scene.querySelectorAll('*').forEach(el => {
+    const s = el.style.animation || getComputedStyle(el).animation;
+    if (s && s !== 'none') { el.style.animation='none'; el.offsetHeight; el.style.animation=''; }
+  });
+}
+
+function nextScene() { if(current<TOTAL-1) goTo(current+1); else if(isAuto) stopAuto(); }
+function prevScene() { if(current>0) goTo(current-1); }
+
+// ══════════════════════════════════════
+// AUDIO ENGINE (replaces speechSynthesis)
+// ══════════════════════════════════════
+function playAudio(audioKey, onEnd) {
+  stopAudio();
+  if (!narrating || !audioKey || !AUDIO_DATA[audioKey]) {
+    if (onEnd) onEnd();
+    return;
+  }
+  const audio = new Audio(AUDIO_DATA[audioKey]);
+  currentAudio = audio;
+  audio.onended = () => {
+    setWave(false);
+    document.getElementById('nbar-av').classList.remove('speaking');
+    currentAudio = null;
+    if (onEnd) onEnd();
+  };
+  audio.onerror = () => {
+    setWave(false);
+    currentAudio = null;
+    if (onEnd) onEnd();
+  };
+  audio.onplay = () => {
+    setWave(true);
+    document.getElementById('nbar-av').classList.add('speaking');
+  };
+  audio.play().catch(() => { setWave(false); if (onEnd) onEnd(); });
+}
+
+function stopAudio() {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.onended = null;
+    currentAudio.onerror = null;
+    currentAudio = null;
+  }
+  setWave(false);
+  clearTimeout(typeTimer);
+  document.getElementById('nbar-av').classList.remove('speaking');
+  TEAM.forEach((_,i) => {
+    document.getElementById('mc'+i)?.classList.remove('spk');
+    document.querySelectorAll('#mw'+i+' .mc-wb').forEach(w=>w.classList.remove('on'));
+  });
+}
+
+function playScene(idx) {
+  const audioKey = SCENE_AUDIO[idx];
+  // Demo card — play Dustin's intro audio but pause auto-advance, wait for manual
+  if (SCENE_IDS[idx] === 'sdemo') {
+    const member = TEAM.find(m=>m.id==='dustin')||null;
+    const script = SCRIPTS[idx] || '';
+    setNarratorBar(member, script);
+    if (audioKey) playAudio(audioKey); // plays once, does NOT trigger autoAdvance
+    return;
+  }
+  if (!audioKey) {
+    if (isAuto) autoAdvance();
+    return;
+  }
+  const narratorId = NARRATOR[idx];
+  const member = TEAM.find(m=>m.id===narratorId)||null;
+  const script = SCRIPTS[idx] || '';
+  setNarratorBar(member, script);
+  playAudio(audioKey, () => {
+    if (isAuto) autoAdvance();
+  });
+}
+
+// Team intro sequential
+function runTeamIntro() {
+  introIdx = 0;
+  playNextMember();
+}
+
+function playNextMember() {
+  if (current !== 0) return;
+  if (introIdx >= TEAM.length) {
+    setTimeout(() => {
+      if (current === 0 && narrating) {
+        if (isAuto) autoAdvance();
+        else goTo(1);
+      }
+    }, 1200);
+    return;
+  }
+  const i = introIdx;
+  TEAM.forEach((_,j) => {
+    document.getElementById('mc'+j)?.classList.toggle('spk',j===i);
+    document.querySelectorAll('#mw'+j+' .mc-wb').forEach(w=>w.classList.toggle('on',j===i));
+  });
+  const member = TEAM[i];
+  const audioKey = INTRO_AUDIO[i];
+  setNarratorBar(member, INTROS[i]);
+  playAudio(audioKey, () => {
+    document.getElementById('mc'+i)?.classList.remove('spk');
+    document.querySelectorAll('#mw'+i+' .mc-wb').forEach(w=>w.classList.remove('on'));
+    introIdx++;
+    setTimeout(playNextMember, 350);
+  });
+}
+
+function setNarratorBar(member, text) {
+  const nm = document.getElementById('nbar-name');
+  const av = document.getElementById('nbar-av');
+  if (member) {
+    nm.textContent = member.name; nm.style.color = member.color;
+    av.textContent = member.emoji;
+    av.style.background = 'linear-gradient(135deg,'+member.color+'55,'+member.color+')';
+    av.style.borderColor = member.color+'66';
+  } else {
+    nm.textContent = 'Narrator'; nm.style.color = 'var(--blue)';
+    av.textContent = '🎙️'; av.style.background = 'linear-gradient(135deg,#1e3a5f,#1d4ed8)';
+    av.style.borderColor = 'rgba(59,130,246,0.4)';
+  }
+  if (text) typeNarratorText(text);
+}
+
+function typeNarratorText(text) {
+  const el = document.getElementById('nbar-words');
+  const cur = document.getElementById('nbar-cur');
+  clearTimeout(typeTimer);
+  el.textContent = text;
+  cur.style.display = 'inline-block';
+  typeTimer = setTimeout(() => { cur.style.display = 'none'; }, 2000);
+}
+
+function setWave(on) { document.querySelectorAll('.wb').forEach(b=>b.classList.toggle('on',on)); }
+
+// ══════════════════════════════════════
+// AUTO PLAY
+// ══════════════════════════════════════
+function toggleNarration() {
+  narrating = !narrating;
+  const btn = document.getElementById('nbtn');
+  if (narrating) {
+    btn.textContent='🔊 Narrating'; btn.classList.add('on');
+    if(current===0) runTeamIntro(); else playScene(current);
+  } else {
+    btn.textContent='🔇 Muted'; btn.classList.remove('on');
+    stopAudio();
+  }
+}
+
+function toggleAuto() { isAuto ? stopAuto() : startAuto(); }
+function startAuto() {
+  isAuto = true;
+  document.getElementById('abtn').textContent='⏸ Pause';
+  // If narration is on, audio engine drives the advance via onEnd callbacks
+  // If narration is off, fall back to duration timers
+  if (!narrating) scheduleNext();
+}
+function stopAuto() {
+  isAuto = false;
+  clearTimeout(autoTimer);
+  document.getElementById('abtn').textContent='▶ Auto Play';
+}
+function scheduleNext() {
+  // Only used when narration is OFF — timer-based fallback
+  if (!isAuto || narrating) return;
+  autoTimer = setTimeout(() => {
+    if (current < TOTAL-1) { nextScene(); setTimeout(scheduleNext, 700); }
+    else stopAuto();
+  }, DURATIONS[current]||8000);
+}
+function autoAdvance() {
+  // Called by audio engine when a scene's audio finishes and auto is on
+  if (!isAuto) return;
+  setTimeout(() => {
+    if (current < TOTAL-1) nextScene();
+    else stopAuto();
+  }, 800); // brief pause between slides
+}
+
+// ══════════════════════════════════════
+// BARS (results scene)
+// ══════════════════════════════════════
+function triggerBars() {
+  const r=document.getElementById('br'), g=document.getElementById('bg');
+  [r,g].forEach(b=>{if(!b)return;b.style.transition='none';b.style.width='0%';b.offsetHeight;});
+  setTimeout(()=>{
+    if(r){r.style.transition='width 1.2s ease';r.style.width='100%';}
+    if(g){g.style.transition='width 1.2s ease';g.style.width='4.5%';}
+  },500);
+}
+
+// ══════════════════════════════════════
+// KEYBOARD
+// ══════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); nextScene(); }
+  if (e.key==='ArrowLeft') { e.preventDefault(); prevScene(); }
+  if (e.key==='n'||e.key==='N') toggleNarration();
+  if (e.key==='p'||e.key==='P') toggleAuto();
+});
+
+// Init
+updateNav();
+// Auto-start narration after 1.5s
+setTimeout(() => { if(narrating) runTeamIntro(); }, 1500);
+</script>
+</body>
+</html>
