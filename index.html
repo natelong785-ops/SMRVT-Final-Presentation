@@ -683,16 +683,21 @@ function playAudio(audioKey, onEnd) {
     currentAudio = null;
     if (onEnd) onEnd();
   };
-  audio.onerror = () => {
+  audio.onerror = (e) => {
+    console.error('Audio failed to load:', audioKey, e);
     setWave(false);
     currentAudio = null;
-    if (onEnd) onEnd();
+    // Don't call onEnd on error — let user advance manually
+    // This prevents intros from chain-firing when audio paths fail
   };
   audio.onplay = () => {
     setWave(true);
     document.getElementById('nbar-av').classList.add('speaking');
   };
-  audio.play().catch(() => { setWave(false); if (onEnd) onEnd(); });
+  audio.play().catch((e) => { 
+    console.error('Audio play() failed:', audioKey, e);
+    setWave(false); 
+  });
 }
 
 function stopAudio() {
@@ -763,7 +768,7 @@ function playNextMember() {
     document.getElementById('mc'+i)?.classList.remove('spk');
     document.querySelectorAll('#mw'+i+' .mc-wb').forEach(w=>w.classList.remove('on'));
     introIdx++;
-    setTimeout(playNextMember, 350);
+    setTimeout(playNextMember, 500);
   });
 }
 
